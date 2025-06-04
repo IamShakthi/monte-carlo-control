@@ -1,107 +1,96 @@
-# VALUE ITERATION ALGORITHM
+# MONTE CARLO CONTROL ALGORITHM
 
 ## AIM
-To develop a Python program to find the optimal policy for the given MDP using the value iteration algorithm.
+To develop a Python program to find the optimal policy for the given RL environment using the Monte Carlo algorithm.
 
 ## PROBLEM STATEMENT
-The FrozenLake environment in OpenAI Gym is a gridworld problem that challenges reinforcement learning agents to navigate a slippery terrain to reach a goal state while avoiding hazards. Note that the environment is closed with a fence, so the agent cannot leave the gridworld.
+Develop a Python program that implements a Monte Carlo control algorithm to find the optimal policy for navigating the FrozenLake environment. The program should initialize the environment, define parameters (discount factor, learning rate, exploration rate), and implement decay schedules for efficient learning. It must generate trajectories based on an epsilon-greedy action selection strategy and update the action-value function using sampled episodes. Evaluate the learned policy by calculating the probability of reaching the goal state and the average undiscounted return. Finally, print the action-value function, state-value function, and optimal policy.
 
-### States
-- 5 Terminal States:
-    - `G` (Goal): 
-      - The state the agent aims to reach. 
-      - In this MDP the goal state is `state 5`
-    - `H` (Hole): 
-      - A hazardous state that the agent must avoid at all costs.
-      - In this MDP the goal state is 
-        - `state 3`
-        - `state 7`
-        - `state 8`
-        - `state 13`
+## MONTE CARLO CONTROL ALGORITHM
+1. Initialize Q(s, a) arbitrarily for all state-action pairs
+2. Initialize returns(s, a) to empty for all state-action pairs
+3. Initialize policy π(s) to be arbitrary (e.g., ε-greedy)
 
-- 11 Non-terminal States:
-    - `S` (Starting state): 
-      - The initial position of the agent.
-      - In this MDP the stating state is `state 1`
-    - `Intermediate states`: Grid cells forming a layout that the agent must traverse.
+4. For each episode:<BR>
+   a. Generate an episode using policy π<BR>
+   b. For each state-action pair (s, a) in the episode:<BR>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i.   Calculate G (return) for that (s, a) pair<BR>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ii.  Append G to returns(s, a)<BR>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iii. Calculate the average of returns(s, a)<BR>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; iv.  Update Q(s, a) using the average return<BR>
+   c. Update policy π(s) based on Q(s, a)
 
-### Actions
-The agent can take 4 actions in each state:
-- `LEFT`
-- `RIGHT`
-- `UP`
-- `DOWN`
 
-### Transition Probabilities
-The environment is stochastic, meaning that the outcome of an action is not always certain.
+## MONTE CARLO CONTROL FUNCTION
+### DEVELOPED BY : YUVASAKTHI N.C
+### REG NO : 212222240120
 
-- `33.33%` chance of moving in the **intended direction**.
-- `66.66%` chance of moving in a **orthogonal directions**.
+```py
 
-This uncertainty adds complexity to the agent's navigation.
+def mc_control(env,
+               gamma=1.0,
+               init_alpha=0.5,
+               min_alpha=0.01,
+               alpha_decay_ratio=0.5,
+               init_epsilon=1.0,
+               min_epsilon=0.1,
+               epsilon_decay_ratio=0.9,
+               n_episodes=3000,
+               max_steps=200,
+               first_visit=True):
 
-### Rewards
-- `+1` for **reaching the goal** state `G`.
-- `0` reward for **all other states**, including the starting state `S` and intermediate states.
+    nS, nA = env.observation_space.n, env.action_space.n
 
-### Episode Termination
-The episode terminates when the agent reaches the goal state `G` or falls into a hole `H`.
+    discounts = np.logspace(
+        0, max_steps,
+        num=max_steps, base=gamma,
+        endpoint=False)
 
-### Graphical Representation.
-![](1.PNG)
+    alphas = decay_schedule(
+        init_alpha, min_alpha,
+        alpha_decay_ratio,
+        n_episodes)
 
-## VALUE ITERATION ALGORITHM
-- Value iteration is a method of computing an optimal MDP policy  and its value.
-- It begins with an initial guess for the value function, and iteratively updates it towards the optimal value function, according to the Bellman optimality equation.
-- The algorithm is guaranteed to converge to the optimal value function, and in the process of doing so, also converges to the optimal policy.
+    epsilons = decay_schedule(
+        init_epsilon, min_epsilon,
+        epsilon_decay_ratio,
+        n_episodes)
 
-The algorithm is as follows:
-1. Initialize the value function `V(s)` arbitrarily for all states `s`.
-2. Repeat until convergence:
-    - Initialize aaction-value function `Q(s, a)` arbitrarily for all states `s` and actions `a`.
-    - For all the states s and all the action a of every state:
-        - Update the action-value function `Q(s, a)` using the Bellman equation.
-        - Take the value function `V(s)` to be the maximum of `Q(s, a)` over all actions `a`.
-        - Check if the maximum difference between `Old V` and `new V` is less than `theta`, where theta is a **small positive number** that determines the **accuracy of estimation**.
-3. If the maximum difference between Old V and new V is greater than theta, then
-    - Update the value function `V` with the **maximum action-value** from `Q`.
-    - Go to **step 2**.
-4. The optimal policy can be constructed by taking the **argmax** of the action-value function `Q(s, a)` over all actions `a`.
-5. Return the optimal policy and the optimal value function.
+    pi_track = []
+    Q = np.zeros((nS, nA), dtype=np.float64)
+    Q_track = np.zeros((n_episodes, nS, nA), dtype=np.float64)
 
-## VALUE ITERATION FUNCTION
-```
-Developed by: YUVASAKTHI N.C
-Register no:212222240120
-```
-```
-# Creating the Frozen Lake environment
-k_states=['SFFH','FGFH','HFFF','FHFF']
-env = gym.make('FrozenLake-v1', desc = k_states)
-init_state = env.reset()
-goal_state = 5
-P = env.env.P
-```
-```
-# Value Iteration Algorithm
-def value_iteration(P, gamma=1.0, theta=1e-10):
-    V = np.zeros(len(P), dtype=np.float64)
-    while True:
-      Q = np.zeros((len(P),len(P[0])),dtype=np.float64)
-      for s in range(len(P)):
-        for a in range(len(P[s])):
-          for prob,next_state,reward,done in P[s][a]:
-            Q[s][a] += prob*(reward + gamma * V[next_state] * (not done))
-      if np.max(np.abs(V - np.max(Q, axis=1))) < theta:
-        break
-      V = np.max(Q, axis=1)
-    pi = lambda s : {s:a for s, a in enumerate(np.argmax(Q, axis=1))}[s]
-    return V, pi
+    select_action = lambda state, Q, epsilon:np.argmax(Q[state]) if np.random.random() > epsilon else np.random.randint(len(Q[state]))
+
+    for e in tqdm(range(n_episodes), leave=False):
+        trajectory = generate_trajectory(select_action, Q, epsilons[e], env, max_steps)
+        visited = np.zeros((nS, nA), dtype=bool)
+
+        for t, (state, action, reward, _, _) in enumerate(trajectory):
+            if visited[state][action] and first_visit:
+                continue
+            visited[state][action] = True
+
+            n_steps = len(trajectory[t:])
+            G = np.sum(discounts[:n_steps] * trajectory[t:, 2])
+            Q[state][action] = Q[state][action] + alphas[e] * (G - Q[state][action])
+
+        Q_track[e] = Q
+        pi_track.append(np.argmax(Q, axis=1))
+
+    v = np.max(Q, axis=1)
+    pi = np.argmax(Q, axis=1)
+    return Q, v, pi, Q_track, pi_track
+
 ```
 
-## OUTPUT:
+### Output
 
-![Screenshot 2025-05-14 152741](https://github.com/user-attachments/assets/3069f9a7-106a-4e98-ac34-7e9268ac0bb6)
+![Screenshot 2025-05-14 153231](https://github.com/user-attachments/assets/23e77612-95c8-418a-82e7-a289ea67f8fb)
+
+![Screenshot 2025-05-14 153243](https://github.com/user-attachments/assets/23064692-e051-4666-82f0-b818d7b22c3f)
+
+
 
 ## RESULT:
-Thus, a Python program is developed to find the optimal policy for the given MDP using the value iteration algorithm.
+Thus to implement Monte Carlo Control to learn an optimal policy in a given environment and evaluate its performance in terms of goal-reaching probability and average return is executed successfully.
